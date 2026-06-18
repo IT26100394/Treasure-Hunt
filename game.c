@@ -8,6 +8,7 @@ int main() {
 	char map[15][15];
 	int hiddenTraps[15][15];
 
+	// Setup exterior walls, interior empty spaces and Traps
 	for (int i = 0; i < 15; i++) {
 		for (int j = 0; j < 15; j++) {
 
@@ -22,6 +23,7 @@ int main() {
 		}
 	}
 
+	// Placing 30 random interior walls
 	int wallsPlaced = 0;
 
         while (wallsPlaced < 30) {
@@ -34,7 +36,7 @@ int main() {
                 }
         }
 
-	
+	// Printing the full map
 	for (int i = 0; i < 15; i++) {
 		for (int j = 0; j < 15; j++) {
 			printf("%c", map[i][j]);
