@@ -19,6 +19,77 @@ void placeWalls() {
         }
 }
 
+//placing 12 random Treasures
+void placeTreasures() {
+	int treasuresPlaced = 0;
+	while (treasuresPlaced < 12) {
+		int randomRow = (rand() % 13) + 1;
+		int randomCol = (rand() % 13) + 1;
+		
+		if (map[randomRow][randomCol] == ' ') {
+			map[randomRow][randomCol] = 'T';
+		        treasuresPlaced++;
+		}
+	}		
+}
+
+//placing 10 random Traps
+void placeTraps() {
+	int trapsPlaced = 0;
+	while (trapsPlaced < 10) {
+		int randomRow = (rand() % 13) + 1;
+                int randomCol = (rand() % 13) + 1;
+
+                if (map[randomRow][randomCol] == ' ') {
+                        map[randomRow][randomCol] = '@';
+                        trapsPlaced++;
+                }
+        }
+}
+
+//Placing 5 random health packs
+void placeHealth() {
+        int healthPlaced = 0;
+        while (healthPlaced < 10) {
+                int randomRow = (rand() % 13) + 1;
+                int randomCol = (rand() % 13) + 1;
+
+                if (map[randomRow][randomCol] == ' ') {
+                        map[randomRow][randomCol] = 'H';
+                        healthPlaced++;
+                }
+        }
+}
+
+//Placing 3 random Keys
+void placeKeys() {
+        int keysPlaced = 0;
+        while (keysPlaced < 10) {
+                int randomRow = (rand() % 13) + 1;
+                int randomCol = (rand() % 13) + 1;
+
+                if (map[randomRow][randomCol] == ' ') {
+                        map[randomRow][randomCol] = 'K';
+                        keysPlaced++;
+                }
+        }
+}
+
+//Placing 3 random doors
+void placeDoors() {
+        int doorsPlaced = 0;
+        while (doorsPlaced < 10) {
+                int randomRow = (rand() % 13) + 1;
+                int randomCol = (rand() % 13) + 1;
+
+                if (map[randomRow][randomCol] == ' ') {
+                        map[randomRow][randomCol] = 'D';
+                        doorsPlaced++;
+                }
+        }
+}
+
+
 //print the full map
 void printMap() {
 	for (int i = 0; i < 15; i++) {
@@ -45,6 +116,11 @@ void initializeMap() {
                 }
         }
 	placeWalls();
+	placeTreasures();
+	placeDoors();
+	placeHealth();
+	placeTraps();
+	placeKeys();
 }
 
 int main() {
