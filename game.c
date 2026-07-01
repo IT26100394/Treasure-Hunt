@@ -151,6 +151,64 @@ void placePlayers() {
         }
 }
 
+void movePlayer(int index) {
+        char move;
+        printf("Player %c, enter move (W/A/S/D): \n", players[index].symbol);
+        scanf(" %c", &move);
+
+        //Create temporary target coordinates
+        int targetY = players[index].y;
+        int targetX = players[index].x;
+
+        // Adjust target based on input
+        if (move == 'W' || move == 'w') {
+                targetY--; 
+        } else if (move == 'S' || move == 's') {
+                targetY++; 
+        } else if (move == 'A' || move == 'a') {
+                targetX--; 
+        } else if (move == 'D' || move == 'd') {
+                targetX++; 
+        } else {
+                printf("Invalid move!\n");
+                return; // Stop the function early if they typed a wrong key
+        }
+
+        // 3. Collision Detection
+        if (map[targetY][targetX] == '#') {
+                printf("Bonk! You hit a wall.\n");
+        } else {
+                // --- NEW: THE ITEM CHECKER ---
+                char targetTile = map[targetY][targetX];
+
+                // Did they step on a Treasure? 
+                if (targetTile == 'T') {
+                        printf("\n*** You found a treasure! +10 Points! ***\n");
+                        players[index].score = players[index].score + 10;
+                }
+
+                // check if  they step on a hidden trap
+                if (hiddenTraps[targetY][targetX] == 1) {
+                        printf("\n*** SNAP! You stepped on a hidden trap! -20 HP! ***\n");
+                        players[index].health = players[index].health - 20;
+                        
+                        // Disarm the trap in the hidden array so it doesn't trigger again
+                        hiddenTraps[targetY][targetX] = 0;
+                }
+                // 4. Update the Board
+        
+                // Erase the player from their old spot
+                map[players[index].y][players[index].x] = ' '; 
+
+                // Update their struct with the new coordinates
+                players[index].y = targetY; 
+                players[index].x = targetX; 
+
+                // Draw the player at their new spot
+                map[players[index].y][players[index].x] = players[index].symbol; 
+        }
+}
+
 // Setup exterior walls, interior empty spaces and Traps
 void initializeMap() {
         for (int i = 0; i < 15; i++) {
@@ -178,7 +236,34 @@ void initializeMap() {
 int main() {
 	srand(time(NULL));
 	initializeMap();
-	printMap();
 
-	return 0;
+        int gameIsRunning = 1;
+        int currentPlayerIndex = 0; //start with player 1
+
+        // The Main Game Loop
+        while (gameIsRunning == 1) {
+
+                printMap();
+                movePlayer(currentPlayerIndex);
+
+                //swirch players
+                if (currentPlayerIndex == 0) {
+                currentPlayerIndex = 1;
+                } else {
+                currentPlayerIndex = 0;
+                }
+
+        // Call our new movement function
+                movePlayer(currentPlayerIndex);
+
+                // Switch players!
+                // If it's 0, it becomes 1. If it's 1, it becomes 0.
+                if (currentPlayerIndex == 0) {
+                        currentPlayerIndex = 1;
+                } else {
+                        currentPlayerIndex = 0;
+                }
+        }
+
+        return 0;
 }
