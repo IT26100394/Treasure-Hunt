@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 typedef struct {
         char name[50];
@@ -152,62 +153,167 @@ void placePlayers() {
 }
 
 void movePlayer(int index) {
-        char move;
-        printf("Player %c, enter move (W/A/S/D): \n", players[index].symbol);
-        scanf(" %c", &move);
+        char moves[5]; //can hold 4 moves and 1 \0 character
 
-        //Create temporary target coordinates
-        int targetY = players[index].y;
-        int targetX = players[index].x;
+        printf("Player %c, enter 4 moves (W/A/S/D) or Q to save: ", players[index].symbol);
+        scanf("%4s", moves);
 
-        // Adjust target based on input
-        if (move == 'W' || move == 'w') {
-                targetY--; 
-        } else if (move == 'S' || move == 's') {
-                targetY++; 
-        } else if (move == 'A' || move == 'a') {
-                targetX--; 
-        } else if (move == 'D' || move == 'd') {
-                targetX++; 
-        } else {
-                printf("Invalid move!\n");
-                return; // Stop the function early if they typed a wrong key
+        //save game option
+        if (moves[0] == 'Q' || moves[0] == 'q') {
+                saveGame();
         }
 
-        // 3. Collision Detection
-        if (map[targetY][targetX] == '#') {
-                printf("Bonk! You hit a wall.\n");
-        } else {
-                // --- NEW: THE ITEM CHECKER ---
-                char targetTile = map[targetY][targetX];
+        for (int i = 0; i < 4; i++) {
+                if (moves[i] == '\0') {
+                        break; 
+                }
 
-                // Did they step on a Treasure? 
-                if (targetTile == 'T') {
-                        printf("\n*** You found a treasure! +10 Points! ***\n");
+                char currentMove = moves[i];
+                int Ycoordi = players[index].y;
+                int Xcoordi = players[index].x;
+
+                if (currentMove == 'W' || currentMove == 'w') {
+                        Ycoordi--; 
+                } else if (currentMove == 'S' || currentMove == 's') {
+                        Ycoordi++; 
+                } else if (currentMove == 'A' || currentMove == 'a') {
+                        Xcoordi--; 
+                } else if (currentMove == 'D' || currentMove == 'd') {
+                        Xcoordi++; 
+                } else {
+                        printf("Invalid move. Character skipped: %c\n", currentMove);
+                        continue; 
+                }
+
+                if (map[Ycoordi][Xcoordi] == '#') {
+                        printf("Step blocked! You hit a wall.\n");
+                        continue;
+                }
+                
+                
+                char tile = map[Ycoordi][Xcoordi];
+
+                // Check for Treasures
+                if (tile == 'T') {
+                        printf("You found a treasure!! +10 Points!!!\n");
                         players[index].score = players[index].score + 10;
                 }
 
-                // check if  they step on a hidden trap
-                if (hiddenTraps[targetY][targetX] == 1) {
-                        printf("\n*** SNAP! You stepped on a hidden trap! -20 HP! ***\n");
-                        players[index].health = players[index].health - 20;
+                // Check for Health Packs
+                else if (tile == 'H') {
+                        printf("You found a Health Pack!! +20 HP!!!\n");
+                        players[index].health = players[index].health + 20;
                         
-                        // Disarm the trap in the hidden array so it doesn't trigger again
-                        hiddenTraps[targetY][targetX] = 0;
+                        // limit health to 100
+                        if (players[index].health > 100) {
+                                players[index].health = 100; 
+                        }
                 }
-                // 4. Update the Board
+
+                // Check for Keys
+                else if (tile == 'K') {
+                        printf("You found a Key!!!\n");
+                        players[index].keys = players[index].keys + 1;
+                }
+
+                // Check for Locked Doors
+                else if (tile == 'D') {
+                        if (players[index].keys > 0) {
+                                printf("You used a key to unlock a door!!!\n");
+                                players[index].keys = players[index].keys - 1; 
+                        } else {
+                                printf("The door is locked! You need a key to pass\n");
+                                continue;
+                        }
+                }
+
+                // Check for Hidden Traps
+                if (hiddenTraps[Ycoordi][Xcoordi] == 1) {
+                        printf("You stepped on a hidden trap!! -20 HP!!!\n");
+                        players[index].health = players[index].health - 20;
+                        hiddenTraps[Ycoordi][Xcoordi] = 0; // remove the trap
+                }
+
+
+                //erase old position
+                map[players[index].y][players[index].x] = ' ';
+
+                players[index].x = Xcoordi; 
+                players[index].y = Ycoordi;
+
+                //new position
+                map[players[index].y][players[index].x] = players[index].symbol;
+        }       
+
+}
+
+// check if all treasures are collected
+int checkWin() {
+        int treasuresLeft = 0;
+        for (int i = 0; i < 15; i++) {
+                for (int j = 0; j < 15; j++) {
+                        if (map[i][j] == 'T') {
+                                treasuresLeft++;
+                        }
+                }
+        }
         
-                // Erase the player from their old spot
-                map[players[index].y][players[index].x] = ' '; 
-
-                // Update their struct with the new coordinates
-                players[index].y = targetY; 
-                players[index].x = targetX; 
-
-                // Draw the player at their new spot
-                map[players[index].y][players[index].x] = players[index].symbol; 
+        if (treasuresLeft == 0) {
+                return 1; 
+        } else {
+                return 0; 
         }
 }
+
+// check if both players are dead
+int checkLoss() {
+        if (players[0].health <= 0 && players[1].health <= 0) {
+                return 1;
+        } else {
+                return 0;
+        }
+}
+
+void displayLeaderboard() {
+        printf("\n\n********************************\n");
+        printf("             LEADERBOARD            \n");
+        printf("\n**********************************\n");
+
+        //temp variables to hold the final calculated score
+        int p1FinalScore = players[0].score;
+        int p2FinalScore = players[1].score;
+
+        //calculate HP bonus for player 1
+        if (players[0].health > 0) {
+                int hpBonus = players[0].health / 2;
+                p1FinalScore = p1FinalScore + hpBonus;
+                printf("Player 1 survived! HP Bonus: +%d points\n", hpBonus);
+        }
+
+        // calculate HP bonus for player 2
+        if (players[1].health > 0) {
+                int hpBonus = players[1].health / 2;
+                p2FinalScore = p2FinalScore + hpBonus;
+                printf("Player 2 survived! HP Bonus: +%d points\n", hpBonus);
+        }
+
+        printf("\n----------------------------------\n");
+        printf("Player 1 Total Score: %d\n", p1FinalScore);
+        printf("Player 2 Total Score: %d\n", p2FinalScore);
+        printf("------------------------------------\n");
+
+        // declare the Winner
+        if (p1FinalScore > p2FinalScore) {
+                printf("      *** PLAYER 1 WINS! *** \n");
+        } else if (p2FinalScore > p1FinalScore) {
+                printf("      *** PLAYER 2 WINS! *** \n");
+        } else {
+                printf(" ***    MATCH TIED!    *** \n");
+        }
+        printf("------------------------------\n\n");
+}
+
+
 
 // Setup exterior walls, interior empty spaces and Traps
 void initializeMap() {
@@ -233,37 +339,118 @@ void initializeMap() {
         placePlayers();
 }
 
+
+//file Save / Load
+
+void saveGame() {
+        //open a file called "savegame.dat" to save
+        FILE *file = fopen("savegame.dat", "wb");
+        
+        if (file == NULL) {
+                printf("Error: Could not save the game!\n");
+                return;
+        }
+
+        //write the data of map, traps and players to the file
+        fwrite(map, sizeof(char), 15 * 15, file);
+        fwrite(hiddenTraps, sizeof(int), 15 * 15, file);
+        fwrite(players, sizeof(Player), 2, file);
+        
+        fclose(file);
+        printf("\n***  Game Saved Successfully!!  ***\n");
+}
+
+void loadGame() {
+        // Open the file to load
+        FILE *file = fopen("savegame.dat", "rb");
+        
+        if (file == NULL) {
+                printf("No saved game found! Starting a new game...\n");
+                initializeMap();
+                return;
+        }
+
+        //read the data directly back into the arrays
+        fread(map, sizeof(char), 15 * 15, file);
+        fread(hiddenTraps, sizeof(int), 15 * 15, file);
+        fread(players, sizeof(Player), 2, file);
+        
+        fclose(file);
+        printf("\n***  Game Loaded Successfully!!  ***\n");
+}
+
 int main() {
 	srand(time(NULL));
-	initializeMap();
+	
+        //Main menu
+        int choice;
+        printf("---------------------------------\n");
+        printf("         TREASURE HUNT           \n");
+        printf("---------------------------------\n");
+        printf("1. Start New Game\n");
+        printf("2. Load Saved Game\n");
+        printf("Enter your choice (1 or 2): ");
+        scanf("%d", &choice);
+
+        if (choice == 2) {
+                loadGame();
+        }
+        else {
+                initializeMap();
+        }
 
         int gameIsRunning = 1;
-        int currentPlayerIndex = 0; //start with player 1
+        int currentPlayerIndex = 0; // start with player 1
 
-        // The Main Game Loop
         while (gameIsRunning == 1) {
 
+                //check if a player has won by getting all treasures
+                if (checkWin() == 1) {
+                        printf("\n\n-----------------------\n");
+                        printf("     YOU WIN !!!     \n");
+                        printf("\n-----------------------\n");
+                        gameIsRunning = 0;
+                        break;
+                }
+
+                //check if both players have lost
+                if (checkLoss() == 1) {
+                        printf("\n\n-------------------------\n");
+                        printf("   BOTH PLAYERS DIED! GAME OVER!\n");
+                        printf("\n---------------------------\n");
+                        gameIsRunning = 0;
+                        break;
+                }
+
+                printf("\n\n-------------------------\n");
+                printf("           NEXT Player         \n");
+                printf("\n-------------------------\n");
+
+                //skip turns of lost players
+                if (players[currentPlayerIndex].health <= 0) {
+                        printf("Player %c has lost and skips their turn!\n", players[currentPlayerIndex].symbol);
+                        
+                        //switch players and go to the next turn
+                        if (currentPlayerIndex == 0) {
+                                currentPlayerIndex = 1;
+                        } else {
+                                currentPlayerIndex = 0;
+                        }
+                        continue; 
+                }
+
                 printMap();
+                
                 movePlayer(currentPlayerIndex);
-
-                //swirch players
                 if (currentPlayerIndex == 0) {
-                currentPlayerIndex = 1;
+                    currentPlayerIndex = 1;
                 } else {
-                currentPlayerIndex = 0;
+                        currentPlayerIndex = 0;    
                 }
 
-        // Call our new movement function
-                movePlayer(currentPlayerIndex);
-
-                // Switch players!
-                // If it's 0, it becomes 1. If it's 1, it becomes 0.
-                if (currentPlayerIndex == 0) {
-                        currentPlayerIndex = 1;
-                } else {
-                        currentPlayerIndex = 0;
-                }
         }
+
+        displayLeaderboard();
 
         return 0;
 }
