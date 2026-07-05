@@ -12,11 +12,27 @@ typedef struct {
         int health;
         char symbol; //player symbol
 
+        //for part B
+        int movesMade;
+        int treasuresFound;
+        int trapsTriggered;
+        int damageTaken;
+        int healthPacksUsed;
+        int keysCollected;
+        int doorsUnlocked;
+
 } Player;
 
 char map[15][15];
 int hiddenTraps[15][15];
-Player players[2]; //array for 2 players
+Player players[3]; //array for 3 players
+
+int totalActivePlayers = 0;
+int currentRound = 1;
+void saveGame();
+void loadGame();
+int checkWin();
+int checkLoss();
 
 //placing 30 random interior walls
 void placeWalls() {
@@ -114,29 +130,34 @@ void printMap() {
 }
 
 void placePlayers() {
-        //set stats for player 1
-        players[0].health = 100;
-        players[0].score = 0;
-        players[0].keys = 0;
-        players[0].symbol = '1';
+        for(int i = 0; i < totalActivePlayers; i++) {
 
-        //set stats for player 2
-        players[1].health = 100;
-        players[1].score = 0;
-        players[1].keys = 0;
-        players[1].symbol = '2';
+                //set stats for players
+                players[i].health = 100;
+                players[i].score = 0;
+                players[i].keys = 0;
 
-        //loop 2 times for players
-        for (int i = 0; i < 2; i++) {
+                //assign player number
+                players[i].symbol = '1' + i;
+
+                //set stats for players
+                players[i].movesMade = 0;
+                players[i].treasuresFound = 0;
+                players[i].trapsTriggered = 0;
+                players[i].damageTaken = 0;
+                players[i].healthPacksUsed = 0;
+                players[i].keysCollected = 0;
+                players[i].doorsUnlocked = 0;
+
+                //place the players in the map
                 int isPlaced = 0;  //1 = placed , 0 = not placed
-
                 while (isPlaced == 0) {
                         int randomRow = (rand() % 13) + 1;
                         int randomCol = (rand() % 13) + 1;
-                        
+                                
                         //map is empty and no hidden traps?
                         if (map[randomRow][randomCol] == ' ' && hiddenTraps[randomRow][randomCol] == 0) {
-                                
+                                        
                                 //save x,y coordinates for each player
                                 players[i].y = randomRow;
                                 players[i].x = randomCol;
@@ -147,10 +168,11 @@ void placePlayers() {
                                 //stops the loop and switches to the other player
                                 isPlaced = 1;
                         }
-                        
                 }
+                        
         }
 }
+
 
 void movePlayer(int index) {
         char moves[5]; //can hold 4 moves and 1 \0 character
@@ -189,6 +211,8 @@ void movePlayer(int index) {
                         printf("Step blocked! You hit a wall.\n");
                         continue;
                 }
+
+                players[index].movesMade++;
                 
                 
                 char tile = map[Ycoordi][Xcoordi];
@@ -197,12 +221,14 @@ void movePlayer(int index) {
                 if (tile == 'T') {
                         printf("You found a treasure!! +10 Points!!!\n");
                         players[index].score = players[index].score + 10;
+                        players[index].treasuresFound++;
                 }
 
                 // Check for Health Packs
                 else if (tile == 'H') {
                         printf("You found a Health Pack!! +20 HP!!!\n");
                         players[index].health = players[index].health + 20;
+                        players[index].healthPacksUsed++;
                         
                         // limit health to 100
                         if (players[index].health > 100) {
@@ -214,6 +240,7 @@ void movePlayer(int index) {
                 else if (tile == 'K') {
                         printf("You found a Key!!!\n");
                         players[index].keys = players[index].keys + 1;
+                        players[index].keysCollected++;
                 }
 
                 // Check for Locked Doors
@@ -221,6 +248,7 @@ void movePlayer(int index) {
                         if (players[index].keys > 0) {
                                 printf("You used a key to unlock a door!!!\n");
                                 players[index].keys = players[index].keys - 1; 
+                                players[index].doorsUnlocked++;
                         } else {
                                 printf("The door is locked! You need a key to pass\n");
                                 continue;
@@ -231,6 +259,8 @@ void movePlayer(int index) {
                 if (hiddenTraps[Ycoordi][Xcoordi] == 1) {
                         printf("You stepped on a hidden trap!! -20 HP!!!\n");
                         players[index].health = players[index].health - 20;
+                        players[index].trapsTriggered++;
+                        players[index].damageTaken = players[index].damageTaken + 20;
                         hiddenTraps[Ycoordi][Xcoordi] = 0; // remove the trap
                 }
 
@@ -265,9 +295,16 @@ int checkWin() {
         }
 }
 
-// check if both players are dead
+// check if all players are dead
 int checkLoss() {
-        if (players[0].health <= 0 && players[1].health <= 0) {
+        int lostPlayers = 0;
+        for (int i = 0; i < totalActivePlayers; i++) {
+                if (players[i].health <= 0) {
+                        lostPlayers++;
+                }
+        }
+
+        if (lostPlayers == totalActivePlayers) {
                 return 1;
         } else {
                 return 0;
@@ -279,37 +316,52 @@ void displayLeaderboard() {
         printf("             LEADERBOARD            \n");
         printf("\n**********************************\n");
 
-        //temp variables to hold the final calculated score
-        int p1FinalScore = players[0].score;
-        int p2FinalScore = players[1].score;
+        //to identify who the winner is
+        int maxScore = -1;
 
-        //calculate HP bonus for player 1
-        if (players[0].health > 0) {
-                int hpBonus = players[0].health / 2;
-                p1FinalScore = p1FinalScore + hpBonus;
-                printf("Player 1 survived! HP Bonus: +%d points\n", hpBonus);
+        for (int i = 0; i < totalActivePlayers; i++) {
+                
+                int finalScore = players[i].score;
+
+                //calculate HP bonus
+                if (players[i].health > 0) {
+                        int hpBonus = players[i].health / 2;
+                        finalScore = finalScore + hpBonus;
+                        printf("Player %c survived! HP Bonus: +%d points\n", players[i].symbol, hpBonus);
+                } else {
+                        printf("Player %c lost. No HP bonus.\n", players[i].symbol);
+                }
+
+                // check the highest score
+                if (finalScore > maxScore) {
+                        maxScore = finalScore;
+                }
+                
+                // Save the final score to the struct
+                players[i].score = finalScore; 
+
+                //player's stats
+                printf("\n-------------------------------\n");
+                printf("------- PLAYER %c STATS --------\n", players[i].symbol);
+                printf("Final Score:     %d\n", finalScore);
+                printf("Moves Made:      %d\n", players[i].movesMade);
+                printf("Treasures Found: %d\n", players[i].treasuresFound);
+                printf("Traps Triggered: %d\n", players[i].trapsTriggered);
+                printf("Damage Taken:    %d\n", players[i].damageTaken);
+                printf("Health Packs:    %d\n", players[i].healthPacksUsed);
+                printf("Keys Collected:  %d\n", players[i].keysCollected);
+                printf("Doors Unlocked:  %d\n", players[i].doorsUnlocked);
         }
 
-        // calculate HP bonus for player 2
-        if (players[1].health > 0) {
-                int hpBonus = players[1].health / 2;
-                p2FinalScore = p2FinalScore + hpBonus;
-                printf("Player 2 survived! HP Bonus: +%d points\n", hpBonus);
-        }
-
+        
         printf("\n----------------------------------\n");
-        printf("Player 1 Total Score: %d\n", p1FinalScore);
-        printf("Player 2 Total Score: %d\n", p2FinalScore);
-        printf("------------------------------------\n");
-
-        // declare the Winner
-        if (p1FinalScore > p2FinalScore) {
-                printf("      *** PLAYER 1 WINS! *** \n");
-        } else if (p2FinalScore > p1FinalScore) {
-                printf("      *** PLAYER 2 WINS! *** \n");
-        } else {
-                printf(" ***    MATCH TIED!    *** \n");
+        
+        for (int i = 0; i < totalActivePlayers; i++) {
+                if (players[i].score == maxScore) {
+                        printf("** PLAYER %c WINS!! **\n", players[i].symbol);
+                }
         }
+
         printf("------------------------------\n\n");
 }
 
@@ -354,8 +406,10 @@ void saveGame() {
         //write the data of map, traps and players to the file
         fwrite(map, sizeof(char), 15 * 15, file);
         fwrite(hiddenTraps, sizeof(int), 15 * 15, file);
-        fwrite(players, sizeof(Player), 2, file);
-        
+        fwrite(players, sizeof(Player), 3, file); //updated to 3
+        fwrite(&totalActivePlayers, sizeof(int), 1, file);
+        fwrite(&currentRound, sizeof(int), 1, file);
+
         fclose(file);
         printf("\n***  Game Saved Successfully!!  ***\n");
 }
@@ -373,7 +427,9 @@ void loadGame() {
         //read the data directly back into the arrays
         fread(map, sizeof(char), 15 * 15, file);
         fread(hiddenTraps, sizeof(int), 15 * 15, file);
-        fread(players, sizeof(Player), 2, file);
+        fread(players, sizeof(Player), 3, file); // Updated to 3
+        fread(&totalActivePlayers, sizeof(int), 1, file);
+        fread(&currentRound, sizeof(int), 1, file);
         
         fclose(file);
         printf("\n***  Game Loaded Successfully!!  ***\n");
@@ -396,6 +452,15 @@ int main() {
                 loadGame();
         }
         else {
+                //for part B
+                printf("Enter number of players (1-3): ");
+                scanf("%d", &totalActivePlayers);
+
+                if (totalActivePlayers < 1 || totalActivePlayers > 3) {
+                        printf("Invalid choice. Set default for 2 players.\n");
+                        totalActivePlayers = 2; 
+                }
+
                 initializeMap();
         }
 
@@ -413,10 +478,10 @@ int main() {
                         break;
                 }
 
-                //check if both players have lost
+                //check if all players have lost
                 if (checkLoss() == 1) {
                         printf("\n\n-------------------------\n");
-                        printf("   BOTH PLAYERS DIED! GAME OVER!\n");
+                        printf("   ALL PLAYERS DIED! GAME OVER!\n");
                         printf("\n---------------------------\n");
                         gameIsRunning = 0;
                         break;
@@ -431,21 +496,22 @@ int main() {
                         printf("Player %c has lost and skips their turn!\n", players[currentPlayerIndex].symbol);
                         
                         //switch players and go to the next turn
-                        if (currentPlayerIndex == 0) {
-                                currentPlayerIndex = 1;
-                        } else {
+                        currentPlayerIndex++;
+
+                        if (currentPlayerIndex >= totalActivePlayers) {
                                 currentPlayerIndex = 0;
+                                currentRound++;
                         }
-                        continue; 
+                        continue;
                 }
 
                 printMap();
                 
                 movePlayer(currentPlayerIndex);
-                if (currentPlayerIndex == 0) {
-                    currentPlayerIndex = 1;
-                } else {
-                        currentPlayerIndex = 0;    
+                currentPlayerIndex++;
+                if (currentPlayerIndex >= totalActivePlayers) {
+                        currentPlayerIndex = 0;
+                        currentRound++;   
                 }
 
         }
